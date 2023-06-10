@@ -14,6 +14,20 @@ mongoose.connect(
 const edit = async(id, name, creator, createDate, deadline) => {
     const exist = await Todo.findOne({_id:id})
     if(exist){
+        const user = await User.findOne({name:creator})
+        if(name !== exist.name || creator !== exist.creator){
+            console.log("Can Edit")
+            if(user){
+                user.history.push({
+                    id:id,
+                    name: name,
+                    creator: creator,
+                    at: '',
+                })
+                user.save()
+                console.log("Edited")
+            }
+        }
         await Todo.updateOne({_id:id}, {$set:{name:name, creator:creator, createDate:createDate, deadline:deadline}})
         return{
             code: 1
@@ -49,6 +63,47 @@ const todoList = async() => {
         data: data
     }
 }
+
+const historyList = async(name) => {
+    const user = await User.findOne({name:name})
+    const history = []
+    if(user){
+        for(var i = 0;i<user.history.length;i++){
+            history.push(user.history[i])
+        }
+        return{
+            history:history,
+            code: 1
+        }
+    }else {
+        const newUser = new User({name: name, history: []})
+        newUser.save()
+        return {
+        history: history,
+        code: 0
+        }
+    }      
+}
+
+const deleteHistory = async(username, name, creator, id) => {
+    const user = await User.findOne({name: username})
+    if(user){
+        await User.updateOne(
+            {name:username},
+            { $pull : {history:{"name":name, "creator":creator, "id":id}}}
+        )
+        return {
+            code : 1
+        }   
+    }
+    else{
+        return {
+            code: 0
+        }
+    }
+}
+
+
 const deleteList = async(id) => {
     const exist = await Todo.deleteOne({_id:id});
     if(!exist){
@@ -61,6 +116,7 @@ const deleteList = async(id) => {
         }
     }
 }
+
 const addList = async(id, name, creator, createDate, deadline, taskID) => {
     const exist = await Todo.findOne({_id:id})
     if(exist){
@@ -69,8 +125,18 @@ const addList = async(id, name, creator, createDate, deadline, taskID) => {
             code: 0
         }
     }else{
+        const user = await User.findOne({name:creator})
+        if(user){
+            user.history.push({
+                id:id,
+                name: name,
+                creator: creator,
+                at: '',
+            })
+            user.save()
+        }
         console.log("here2")
-        const newTodo = new Todo({_id:id, name:name, creator:creator, createDate:createDate, deadline:deadline, taskID:taskID, done:false})
+        const newTodo = new Todo({_id:id, name:name, creator:creator, createDate:createDate, deadline:deadline, at:[], taskID:taskID, done:false})
         newTodo.save()
         return{
             code: 1
@@ -84,4 +150,4 @@ db.once("open",() => {
     console.log("db opened successfully.")
 });
 
-export { todoList, addList, deleteList, changeDone, edit }
+export { todoList, addList, deleteList, changeDone, edit, historyList, deleteHistory }

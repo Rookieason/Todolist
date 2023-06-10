@@ -22,6 +22,9 @@ const TodoSchema = new Schema({
         type:String,
         requierd: true
     },
+    at:{
+        type:[String]
+    },
     done:{
         type:Boolean
     }

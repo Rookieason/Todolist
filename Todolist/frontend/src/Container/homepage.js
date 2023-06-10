@@ -1,13 +1,12 @@
 import React, { useState, useContext } from 'react'
 import styled from 'styled-components'
-import { Button, Input, Modal, Calendar, Select, Space } from 'antd'
-import { UserOutlined } from '@ant-design/icons';
+import { Button, Input, Modal, Calendar, Select, Space, Avatar   } from 'antd'
 import { EditOutlined } from '@ant-design/icons';
 import { FilterOutlined } from '@ant-design/icons';
 import { CloseCircleOutlined } from '@ant-design/icons'
 import { userContext } from '../Context/user.js'
 import { todoContext } from '../Context/todo.js'
-import { Done } from '@mui/icons-material';
+import { historyContext } from '../Context/history.js';
 import { ObjectID } from 'bson';
 import axios from '../api'
 
@@ -34,7 +33,8 @@ const TodoBlock = styled.div`
     flex-direction: column;
     align-items: center;
     font-size: 20px;
-    color: white
+    color: white;
+    overflow-y: scroll;
 `
 const Inputwidth = styled.div`
     width: 450px;
@@ -61,6 +61,8 @@ const Curse = styled.div`
 
 
 const Homepage = () => {
+    const [ openhistory, setOpenhistory ] = useState(false)
+    const { historylist, setHistory } = useContext(historyContext)
     const { todo, setTodo } = useContext(todoContext)
     const { user, setUser } = useContext(userContext)
     const [ newItem, setNewItem ] = useState('') 
@@ -68,7 +70,6 @@ const Homepage = () => {
     const [ deadline, setDeadline ] = useState('')
     //params for filter
     const [ filterModal, setFilterModal ] = useState(false)
-    const [ filter, setFilter ] = useState(false)
     const [ filterOption, setFilterOption ] = useState()
     const [ filterContext, setFilterContext ] = useState("")
     //
@@ -94,12 +95,12 @@ const Homepage = () => {
     const noFilter = async() => {
         const { data: {data} } = await axios.get('/api/todolist', {params:{}});
         setTodo(data)
+        setFilterModal(false)
     }
     const handleChange = (value) => {
         setFilterOption(value)
     }
     //
-    console.log(todo)
     //function for edit
     const EditDeadline = (value, mode) => {
         var val = value.format('YYYY-MM-DD')
@@ -135,6 +136,16 @@ const Homepage = () => {
                         createDate: currentDate
                     }
                 }))
+                if(editUser !== id.creator || editTodo !== id.name){
+                    setHistory((prev) => {
+                        return [...prev, {
+                            id:id._id,
+                            name: editTodo,
+                            creator: editUser,
+                            at: []
+                        }]
+                    })
+                }
                 setEditModal(false)
             }else{
                 alert("Edit failed!")
@@ -201,8 +212,6 @@ const Homepage = () => {
         setOpenModal(false)
     }
     const handleOK = async () => {
-        console.log(deadline)
-        console.log(newItem)
         if(deadline !== '' && newItem !== ''){
             const id = new ObjectID()
             console.log(id)
@@ -219,7 +228,7 @@ const Homepage = () => {
             } = await axios.post('/api/addlist', {
                 id: id,
                 name: newItem,
-                creator: user.name,
+                creator: user,
                 createDate: currentDate,
                 deadline: deadline,
                 taskID: text
@@ -229,14 +238,22 @@ const Homepage = () => {
                 setTodo((prev) => {
                     return [...prev, {
                         name:newItem, 
-                        creator:user.name, 
+                        creator:user, 
                         deadline:deadline, 
                         done:false, 
                         _id:id, 
                         createDate:currentDate,
                         taskID: text
                     }]}
-                ) 
+                )
+                setHistory((prev) => {
+                    return [...prev,{
+                        id:id,
+                        name:newItem,
+                        creator:user,
+                        at: []
+                    }]
+                }) 
                 setNewItem('')
                 setOpenModal(false)               
             }else{
@@ -268,6 +285,27 @@ const Homepage = () => {
         var val = value.format('YYYY-MM-DD')
         setDeadline(val)
     }
+    //function for history
+    const openhis = () => {
+        setOpenhistory(true)
+    }
+    const closehis = () => {
+        setOpenhistory(false)
+    }
+    const DeleteHistory = async(item) => {
+        const {
+            data: { code }
+        } = await axios.post('/api/deleteHistory', {
+            username: user,
+            name: item.name,
+            creator: item.creator,
+            id: item.id
+        })
+        if(code){
+            setHistory(historylist.filter(t => (t.id !== item.id || t.name !== item.name || t.creator !== item.creator)))
+        }
+    }
+    //
     return (
         <>
             <HomeLeft>
@@ -275,6 +313,20 @@ const Homepage = () => {
             <HomeRight>
                 <TodoBlock>
                     <h1>Todo</h1>
+                    <Avatar onClick={openhis} size={75} src="https://assets.juksy.com/files/articles/60745/800x_100_w-58579190a7a39.jpg" style={{ margin: "10px", position:"absolute", right:"10px", cursor:"pointer", top:"5px"}}></Avatar>
+                    <Modal
+                        title="歷史紀錄"
+                        open={openhistory} onOk={closehis} onCancel={closehis}
+                    >
+                        {historylist.map((item, i) => {
+                            return <SingleTodo key={i} >
+                                <TodoText><Curse>{item.name}</Curse></TodoText>
+                                <TodoText>{item.creator}</TodoText>
+                                <CloseCircleOutlined onClick={() => DeleteHistory(item)}></CloseCircleOutlined>
+                            </SingleTodo>
+                    })}
+
+                    </Modal>
                     <Button onClick={showModal}>新增任務</Button>
                     <Inputwidth>
                         <Modal

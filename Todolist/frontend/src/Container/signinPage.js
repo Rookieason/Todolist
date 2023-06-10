@@ -2,9 +2,9 @@ import React, { useState, useRef, useContext } from 'react'
 import { Button, Input } from 'antd'
 import { UserOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
-import { EyeInvisibleOutlined, EyeTwoTone } from '@ant-design/icons';
 import { userContext } from '../Context/user.js'
 import { todoContext } from '../Context/todo.js'
+import { historyContext } from '../Context/history.js'
 import { useHistory } from 'react-router-dom'
 
 import axios from '../api'
@@ -25,15 +25,24 @@ const TitleDiv = styled.div`
     justify-content: center;
 `
 const SigninPage = () => {
-    const bodyRef = useRef(null)
+    const { historylist, setHistory } = useContext(historyContext)
     const { user, setUser } = useContext(userContext)
     const { todo, setTodo } = useContext(todoContext)
-    const [ password, setPassword ] = useState('')
     const goPath = useHistory()
     const checkin = async(e) => {
+        console.log("Checkin")
         const { data: {data} } = await axios.get('/api/todolist', {params:{}});
+        const { 
+            data: { history, code }
+        } = await axios.get('/api/historylist', {
+            params:{
+                name: user
+            }
+        })
         setTodo(data)
-        goPath.push("/homepage")
+        setHistory(history)
+        goPath.push("/homepage") 
+        if(!code)console.log("It's a new person")  
     }
     return <Div>
         <TitleDiv>
@@ -44,37 +53,15 @@ const SigninPage = () => {
         <Input
         onKeyDown = {(e) => {
             if(e.key === "Enter" && e.target.value){
-                bodyRef.current.focus()
+                checkin()
             }
         }}
         prefix={<UserOutlined/>}
         placeholder="Usename"
-        value={user.name}
-        onChange = {(e) => setUser(t => {
-            return {
-                name: e.target.value,
-                id:t.id
-            }
-        })}
+        value={user}
+        onChange = {(e) => setUser(e.target.value)}
         style={{marginBottom:10}}
         ></Input>
-
-        {/*Input password*/}
-        <Input.Password
-        ref={bodyRef}
-        onKeydown = {(e) => {
-            if(e.key === "Enter"){
-                checkin()
-            }
-        }}  
-        prefix = "🔒"
-        type="search"
-        placeholder="Password"
-        value = {password}
-        onChange = {(e) => setPassword(e.target.value)}
-        style={{marginBottom:10}}
-        iconRender = {visible => (visible ? <EyeTwoTone /> : <EyeInvisibleOutlined />)}
-        ></Input.Password>
         <Button onClick={checkin}>Send</Button>
     </Div>
 }

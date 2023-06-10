@@ -15,6 +15,7 @@ import reportWebVitals from './reportWebVitals.js'
 import 'antd/dist/antd.css'
 import UserContextProvider from './Context/user.js'
 import TodoContextProvider from './Context/todo.js'
+import HistoryContextProvider from './Context/history.js'
 
 const url = new URL("/graphql", window.location.href)
 
@@ -51,7 +52,9 @@ ReactDOM.render(
   <ApolloProvider client={client}>
     <UserContextProvider>
       <TodoContextProvider>
-        <App />  
+        <HistoryContextProvider>
+          <App />  
+        </HistoryContextProvider>  
       </TodoContextProvider>
     </UserContextProvider>
   </ApolloProvider>,
